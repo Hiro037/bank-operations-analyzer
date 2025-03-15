@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import pandas as pd
 import requests
@@ -52,25 +52,24 @@ def get_currency_rates(user_currencies: List) -> List[Dict]:
     Возвращает текущие курсы валют.
     """
     load_dotenv()
-    API_KEY = os.getenv('API_KEY')
+    API_KEY = os.getenv("API_KEY")
     if not API_KEY:
         raise ValueError("Ошибка: API_KEY не найден в .env")
 
     currency_rates = []
 
     for currency in user_currencies:
-        url = (f"https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency={currency}"
-               f"&to_currency=RUB&apikey={API_KEY}")
+        url = (
+            f"https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency={currency}"
+            f"&to_currency=RUB&apikey={API_KEY}"
+        )
         response = requests.get(url)
         data = response.json()
 
         if "Realtime Currency Exchange Rate" in data:
             rate = data["Realtime Currency Exchange Rate"]["5. Exchange Rate"]
             if rate:
-                response_dict = {
-                    "currency": currency,
-                    "rate": float(rate)
-                }
+                response_dict = {"currency": currency, "rate": float(rate)}
                 currency_rates.append(response_dict)
         else:
             pass
@@ -83,7 +82,7 @@ def get_stock_prices(user_stocks: Dict) -> List[Dict]:
     Возвращает текущие цены на акции.
     """
     load_dotenv()
-    API_KEY = os.getenv('API_KEY')
+    API_KEY = os.getenv("API_KEY")
     if not API_KEY:
         raise ValueError("Ошибка: API_KEY не найден в .env")
 
@@ -97,10 +96,7 @@ def get_stock_prices(user_stocks: Dict) -> List[Dict]:
         if "Global Quote" in data:
             price = data["Global Quote"]["05. price"]
             if price:
-                response_dict = {
-                    "stock": stock,
-                    "price": float(price)
-                }
+                response_dict = {"stock": stock, "price": float(price)}
                 stock_prices.append(response_dict)
         else:
             pass
@@ -108,7 +104,7 @@ def get_stock_prices(user_stocks: Dict) -> List[Dict]:
     return stock_prices
 
 
-def load_user_settings(user_settings_file: str) -> Dict:
+def load_user_settings(user_settings_file: str) -> Any:
     """
     Загружает пользовательские настройки из user_settings.json.
     """

@@ -2,9 +2,14 @@ from typing import Dict, List
 
 import pandas as pd
 
-from src.utils import (calculate_cashback, get_currency_rates, get_greeting,
-                       get_stock_prices, get_transactions_for_month,
-                       load_user_settings)
+from src.utils import (
+    calculate_cashback,
+    get_currency_rates,
+    get_greeting,
+    get_stock_prices,
+    get_transactions_for_month,
+    load_user_settings,
+)
 
 
 def get_card_summary(df: pd.DataFrame) -> List[Dict]:
@@ -17,14 +22,14 @@ def get_card_summary(df: pd.DataFrame) -> List[Dict]:
     cards_summary = []
 
     # Уникальные номера карт
-    unique_cards = df['Номер карты'].dropna().unique()
+    unique_cards = df["Номер карты"].dropna().unique()
 
     for card in unique_cards:
         # Фильтруем транзакции по карте
-        card_transactions = df[df['Номер карты'] == card]
+        card_transactions = df[df["Номер карты"] == card]
 
         # Сумма расходов (только отрицательные операции)
-        total_spent = card_transactions[card_transactions['Сумма операции'] < 0]['Сумма операции'].sum() * -1
+        total_spent = card_transactions[card_transactions["Сумма операции"] < 0]["Сумма операции"].sum() * -1
 
         # Вычисляем кэшбэк
         cashback = calculate_cashback(total_spent)

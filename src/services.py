@@ -1,10 +1,11 @@
-import pandas as pd
-from typing import List, Dict
-import logging
 import json
+import logging
+
+import pandas as pd
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 
 def simple_search(file_path: str, search_query: str) -> str:
     """
@@ -22,8 +23,11 @@ def simple_search(file_path: str, search_query: str) -> str:
 
         # Фильтрация транзакций с использованием лямбда-функции
         filtered_transactions = df[
-            df.apply(lambda row: search_query.lower() in str(row["Описание"]).lower() or
-                                 search_query.lower() in str(row["Категория"]).lower(), axis=1)
+            df.apply(
+                lambda row: search_query.lower() in str(row["Описание"]).lower()
+                or search_query.lower() in str(row["Категория"]).lower(),
+                axis=1,
+            )
         ]
 
         # Преобразование в список словарей
