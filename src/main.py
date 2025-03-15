@@ -1,11 +1,11 @@
 import json
 from datetime import datetime
+
 import pandas as pd
 
-from src.views import generate_home_page_response
-from src.services import simple_search
 from src.reports import spending_by_category
-from src.utils import load_user_settings
+from src.services import simple_search
+from src.views import generate_home_page_response
 
 
 def display_menu():
@@ -23,8 +23,9 @@ def display_menu():
 def get_common_input():
     """Запрашивает общие параметры для всех команд."""
     transactions_file = input("Введите путь к файлу транзакций (Excel): ").strip()
-    settings_file = input(
-        "Введите путь к файлу настроек [по умолчанию: user_settings.json]: ").strip() or "user_settings.json"
+    settings_file = (
+        input("Введите путь к файлу настроек [по умолчанию: user_settings.json]: ").strip() or "user_settings.json"
+    )
     return transactions_file, settings_file
 
 
@@ -32,13 +33,12 @@ def run_home_page():
     """Запускает генерацию главной страницы."""
     transactions_file, settings_file = get_common_input()
     target_date = input("Введите дату (YYYY-MM-DD) [по умолчанию: сегодня]: ").strip() or datetime.now().strftime(
-        "%Y-%m-%d")
+        "%Y-%m-%d"
+    )
 
     try:
         result = generate_home_page_response(
-            file_path=transactions_file,
-            date_time_str=target_date,
-            user_settings_file=settings_file
+            file_path=transactions_file, date_time_str=target_date, user_settings_file=settings_file
         )
         print("\nРезультат:")
         print(json.dumps(result, ensure_ascii=False, indent=4))
@@ -64,7 +64,8 @@ def run_report():
     transactions_file, _ = get_common_input()
     category = input("Введите категорию (например, 'Фастфуд'): ").strip()
     target_date = input(
-        "Введите дату отчета (YYYY-MM-DД) [по умолчанию: сегодня]: ").strip() or datetime.now().strftime("%Y-%m-%d")
+        "Введите дату отчета (YYYY-MM-DД) [по умолчанию: сегодня]: "
+    ).strip() or datetime.now().strftime("%Y-%m-%d")
 
     try:
         df = pd.read_excel(transactions_file)
