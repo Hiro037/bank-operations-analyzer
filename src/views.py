@@ -1,14 +1,11 @@
-from datetime import datetime
-import pandas as pd
 from typing import Dict, List
-from utils import (
-    get_greeting,
-    get_transactions_for_month,
-    get_currency_rates,
-    get_stock_prices,
-    load_user_settings,
-    calculate_cashback
-)
+
+import pandas as pd
+
+from src.utils import (calculate_cashback, get_currency_rates, get_greeting,
+                       get_stock_prices, get_transactions_for_month,
+                       load_user_settings)
+
 
 def get_card_summary(df: pd.DataFrame) -> List[Dict]:
     """
@@ -79,8 +76,6 @@ def generate_home_page_response(file_path: str, date_time_str: str, user_setting
     :param user_settings_file: Путь к файлу с пользовательскими настройками.
     :return: JSON-ответ с данными для веб-страницы.
     """
-    # Преобразуем date_time_str в объект datetime
-    target_date = datetime.strptime(date_time_str, "%Y-%m-%d")
 
     # Получаем приветствие
     greeting = get_greeting()
@@ -95,7 +90,11 @@ def generate_home_page_response(file_path: str, date_time_str: str, user_setting
     top_transactions = get_top_transactions(transactions_df, n=5)
 
     # Загружаем пользовательские настройки
-    user_settings = load_user_settings(user_settings_file)
+    try:
+        user_settings = load_user_settings(user_settings_file)
+    except FileNotFoundError:
+        print(f"Ошибка: файл {user_settings_file} не найден.")
+        user_settings = {"user_currencies": [], "user_stocks": []}
     user_currencies = user_settings.get("user_currencies", [])
     user_stocks = user_settings.get("user_stocks", [])
 
@@ -115,11 +114,3 @@ def generate_home_page_response(file_path: str, date_time_str: str, user_setting
     }
 
     return response
-
-
-file_path = "C:\\Users\\User\\PycharmProjects\\bank-operations-analyzer\\data\\operations.xlsx"
-date_time_str = "2021-12-31"
-user_settings_file = "C:\\Users\\User\\PycharmProjects\\bank-operations-analyzer\\data\\user_settings.json"
-
-response = generate_home_page_response(file_path, date_time_str, user_settings_file)
-print(response)

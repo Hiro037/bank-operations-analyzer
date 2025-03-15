@@ -1,11 +1,12 @@
-from datetime import datetime
-import pandas as pd
-from typing import Dict, List
-import os
-from dotenv import load_dotenv
-import requests
 import json
-import logging
+import os
+from datetime import datetime
+from typing import Dict, List
+
+import pandas as pd
+import requests
+from dotenv import load_dotenv
+
 
 def get_greeting() -> str:
     """Возвращает приветствие в зависимости от времени суток."""
@@ -19,7 +20,8 @@ def get_greeting() -> str:
     else:
         return "Доброй ночи!"
 
-def get_transactions_for_month(file_path: pd.DataFrame, target_date_str: str) -> pd.DataFrame:
+
+def get_transactions_for_month(file_path: str, target_date_str: str) -> pd.DataFrame:
     """
     Фильтрует транзакции с начала месяца по указанную дату.
 
@@ -44,31 +46,37 @@ def get_transactions_for_month(file_path: pd.DataFrame, target_date_str: str) ->
 
     return filtered_df
 
+
 def get_currency_rates(user_currencies: List) -> List[Dict]:
     """
     Возвращает текущие курсы валют.
     """
     load_dotenv()
     API_KEY = os.getenv('API_KEY')
+    if not API_KEY:
+        raise ValueError("Ошибка: API_KEY не найден в .env")
 
     currency_rates = []
 
     for currency in user_currencies:
-        url = f"https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency={currency}&to_currency=RUB&apikey={API_KEY}"
+        url = (f"https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency={currency}"
+               f"&to_currency=RUB&apikey={API_KEY}")
         response = requests.get(url)
         data = response.json()
 
         if "Realtime Currency Exchange Rate" in data:
             rate = data["Realtime Currency Exchange Rate"]["5. Exchange Rate"]
-            response_dict = {
-                "currency": currency,
-                "rate": float(rate)
-            }
-            currency_rates.append(response_dict)
+            if rate:
+                response_dict = {
+                    "currency": currency,
+                    "rate": float(rate)
+                }
+                currency_rates.append(response_dict)
         else:
             pass
 
     return currency_rates
+
 
 def get_stock_prices(user_stocks: Dict) -> List[Dict]:
     """
@@ -76,6 +84,8 @@ def get_stock_prices(user_stocks: Dict) -> List[Dict]:
     """
     load_dotenv()
     API_KEY = os.getenv('API_KEY')
+    if not API_KEY:
+        raise ValueError("Ошибка: API_KEY не найден в .env")
 
     stock_prices = []
 
@@ -86,11 +96,12 @@ def get_stock_prices(user_stocks: Dict) -> List[Dict]:
 
         if "Global Quote" in data:
             price = data["Global Quote"]["05. price"]
-            response_dict = {
-                "stock": stock,
-                "price": float(price)
-            }
-            stock_prices.append(response_dict)
+            if price:
+                response_dict = {
+                    "stock": stock,
+                    "price": float(price)
+                }
+                stock_prices.append(response_dict)
         else:
             pass
 
