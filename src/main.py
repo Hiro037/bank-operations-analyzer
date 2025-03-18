@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from typing import Any, Dict, List
 
 import pandas as pd
 
@@ -8,7 +9,7 @@ from src.services import simple_search
 from src.views import generate_home_page_response
 
 
-def display_menu():
+def display_menu() -> str:
     """Выводит интерактивное меню."""
     print("\n" + "=" * 40)
     print("Банковский анализатор операций")
@@ -20,24 +21,24 @@ def display_menu():
     return input("Выберите действие (1-4): ")
 
 
-def get_common_input():
+def get_common_input() -> tuple[str, str]:
     """Запрашивает общие параметры для всех команд."""
-    transactions_file = input("Введите путь к файлу транзакций (Excel): ").strip()
-    settings_file = (
+    transactions_file: str = input("Введите путь к файлу транзакций (Excel): ").strip()
+    settings_file: str = (
         input("Введите путь к файлу настроек [по умолчанию: user_settings.json]: ").strip() or "user_settings.json"
     )
     return transactions_file, settings_file
 
 
-def run_home_page():
+def run_home_page() -> None:
     """Запускает генерацию главной страницы."""
     transactions_file, settings_file = get_common_input()
-    target_date = input("Введите дату (YYYY-MM-DD) [по умолчанию: сегодня]: ").strip() or datetime.now().strftime(
+    target_date: str = input("Введите дату (YYYY-MM-DD) [по умолчанию: сегодня]: ").strip() or datetime.now().strftime(
         "%Y-%m-%d"
     )
 
     try:
-        result = generate_home_page_response(
+        result: Dict[str, Any] = generate_home_page_response(
             file_path=transactions_file, date_time_str=target_date, user_settings_file=settings_file
         )
         print("\nРезультат:")
@@ -46,40 +47,42 @@ def run_home_page():
         print(f"Ошибка: {str(e)}")
 
 
-def run_search():
+def run_search() -> None:
     """Запускает поиск транзакций."""
     transactions_file, _ = get_common_input()
-    search_query = input("Введите поисковый запрос: ").strip()
+    search_query: str = input("Введите поисковый запрос: ").strip()
+    transactions: pd.DataFrame = pd.read_excel(transactions_file)
+    transactions_as_dict: List = transactions.to_dict(orient="records")
 
     try:
-        result = simple_search(transactions_file, search_query)
+        result: str = simple_search(transactions_as_dict, search_query)
         print("\nНайденные транзакции:")
         print(result)
     except Exception as e:
         print(f"Ошибка: {str(e)}")
 
 
-def run_report():
+def run_report() -> None:
     """Запускает отчет по категориям."""
     transactions_file, _ = get_common_input()
-    category = input("Введите категорию (например, 'Фастфуд'): ").strip()
-    target_date = input(
+    category: str = input("Введите категорию (например, 'Фастфуд'): ").strip()
+    target_date: str = input(
         "Введите дату отчета (YYYY-MM-DД) [по умолчанию: сегодня]: "
     ).strip() or datetime.now().strftime("%Y-%m-%d")
 
     try:
-        df = pd.read_excel(transactions_file)
-        result = spending_by_category(df, category, target_date)
+        df: pd.DataFrame = pd.read_excel(transactions_file)
+        result: pd.DataFrame = spending_by_category(df, category, target_date)
         print("\nОтчет по категории:")
         print(result)
     except Exception as e:
         print(f"Ошибка: {str(e)}")
 
 
-def main():
+def main() -> None:
     """Основной цикл программы."""
     while True:
-        choice = display_menu()
+        choice: str = display_menu()
 
         if choice == "1":
             run_home_page()

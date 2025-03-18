@@ -1,86 +1,60 @@
 import json
 import os
 import sys
-import unittest
-from typing import Any
-from unittest.mock import patch
+from typing import Any, Dict, List
 
-import pandas as pd
+import pytest
 
 from src.services import simple_search
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
+# Тестовые данные
+SAMPLE_TRANSACTIONS: List[Dict[str, Any]] = [
+    {"Описание": "Покупка еды", "Категория": "Продукты"},
+    {"Описание": "Такси", "Категория": "Транспорт"},
+    {"Описание": "Кино", "Категория": "Развлечения"},
+    {"Категория": "Еда"},  # Тест на отсутствие "Описание"
+    {"Описание": "TEST", "Категория": "test"},  # Для проверки регистра
+]
 
-class TestSimpleSearch(unittest.TestCase):
+TEST_CASES: List[tuple[str, List[int]]] = [
+    # (search_query, expected_indices)
+    ("еды", [0]),  # Поиск по описанию (регистр)
+    ("ТРАНСПОРТ", [1]),  # Поиск по категории (регистр)
+    ("кино", [2]),  # Точное совпадение
+    ("Еда", [3]),  # Совпадение в разных полях
+    ("нет", []),  # Нет совпадений
+    ("test", [4]),  # Регистронезависимость
+    ("", list(range(5))),  # Пустой запрос → все транзакции
+]
 
-    @patch("pandas.read_excel")
-    def test_simple_search_found(self, mock_read_excel: Any) -> None:
-        # Создаем мок DataFrame
-        mock_data = pd.DataFrame(
-            {
-                "Описание": ["Покупка продуктов", "Оплата интернета", "Покупка книг"],
-                "Категория": ["Еда", "Интернет", "Книги"],
-            }
-        )
-        mock_read_excel.return_value = mock_data
 
-        # Вызываем функцию с тестовым запросом
-        result = simple_search("dummy_path.xlsx", "Покупка")
+@pytest.mark.parametrize("search_query, expected_indices", TEST_CASES)
+def test_simple_search(search_query: str, expected_indices: List[int]) -> None:
+    # Вызов функции
+    result: str = simple_search(SAMPLE_TRANSACTIONS, search_query)
 
-        # Проверяем результат
-        expected_result = [
-            {"Описание": "Покупка продуктов", "Категория": "Еда"},
-            {"Описание": "Покупка книг", "Категория": "Книги"},
-        ]
-        self.assertEqual(json.loads(result), expected_result)
+    # Проверка результата
+    expected_result: List[Dict[str, Any]] = [SAMPLE_TRANSACTIONS[i] for i in expected_indices]
+    assert json.loads(result) == expected_result
 
-    @patch("pandas.read_excel")
-    def test_simple_search_not_found(self, mock_read_excel: Any) -> None:
-        # Создаем мок DataFrame
-        mock_data = pd.DataFrame(
-            {"Описание": ["Оплата интернета", "Оплата телефона"], "Категория": ["Интернет", "Телефон"]}
-        )
-        mock_read_excel.return_value = mock_data
 
-        # Вызываем функцию с тестовым запросом
-        result = simple_search("dummy_path.xlsx", "Книги")
+def test_empty_transactions() -> None:
+    # Пустой список транзакций
+    result: str = simple_search([], "test")
+    assert json.loads(result) == []
 
-        # Проверяем результат
-        self.assertEqual(json.loads(result), [])
 
-    @patch("pandas.read_excel")
-    def test_simple_search_file_not_found(self, mock_read_excel: Any) -> None:
-        # Мокируем исключение FileNotFoundError
-        mock_read_excel.side_effect = FileNotFoundError
+def test_invalid_transaction_structure() -> None:
+    # Транзакции с некорректными полями
+    transactions: List[Dict[str, Any]] = [{"WrongField": "value"}]
+    result: str = simple_search(transactions, "test")
+    assert json.loads(result) == []
 
-        # Вызываем функцию
-        result = simple_search("nonexistent_path.xlsx", "Покупка")
 
-        # Проверяем результат
-        self.assertEqual(json.loads(result), [])
-
-    @patch("pandas.read_excel")
-    def test_simple_search_key_error(self, mock_read_excel: Any) -> None:
-        # Создаем мок DataFrame с отсутствующим столбцом
-        mock_data = pd.DataFrame(
-            {"Description": ["Покупка продуктов", "Оплата интернета"], "Category": ["Еда", "Интернет"]}
-        )
-        mock_read_excel.return_value = mock_data
-
-        # Вызываем функцию
-        result = simple_search("dummy_path.xlsx", "Покупка")
-
-        # Проверяем результат
-        self.assertEqual(json.loads(result), [])
-
-    @patch("pandas.read_excel")
-    def test_simple_search_general_exception(self, mock_read_excel: Any) -> None:
-        # Мокируем общее исключение
-        mock_read_excel.side_effect = Exception("Some error")
-
-        # Вызываем функцию
-        result = simple_search("dummy_path.xlsx", "Покупка")
-
-        # Проверяем результат
-        self.assertEqual(json.loads(result), [])
+def test_missing_fields() -> None:
+    # Отсутствие обоих полей
+    transactions: List[Dict[str, Any]] = [{"ДругоеПоле": "значение"}]
+    result: str = simple_search(transactions, "test")
+    assert json.loads(result) == []

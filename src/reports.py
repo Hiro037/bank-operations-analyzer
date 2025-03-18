@@ -1,66 +1,92 @@
 import datetime
 import logging
-from typing import Any
+from typing import Any, Callable, Optional
 
 import pandas as pd
 
-# Настроим логирование
+# Настройка логирования
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
-def spending_by_category(transactions: pd.DataFrame, category: str, date: Any = None) -> Any:
+def save_report(func: Optional[Callable] = None, filename: Optional[str] = None) -> Callable:
     """
-    Фильтрует транзакции по категории за последние 3 месяца от указанной даты.
+    Декоратор для сохранения отчёта (DataFrame) в JSON-файл.
+    - Если filename не передан, используется имя по умолчанию.
+    - Если передан, сохраняем результат в указанный файл.
+    """
+
+    def decorator_report(func: Callable) -> Callable:
+        def wrapper_report(*args: Any, **kwargs: Any) -> pd.DataFrame:
+            # Вызываем исходную функцию, получаем DataFrame
+            df_result: pd.DataFrame = func(*args, **kwargs)
+
+            # Если не задано имя файла, используем имя по умолчанию
+            output_file: str = filename or "default_report.json"
+
+            # Сохраняем DataFrame в JSON
+            df_result.to_json(output_file, orient="records", force_ascii=False, date_format="iso")
+            logging.info(f"Отчёт сохранён в файл: {output_file}")
+
+            # Возвращаем DataFrame дальше по коду
+            return df_result
+
+        return wrapper_report
+
+    # Если декоратор вызывается без параметров: @save_report
+    if func:
+        return decorator_report(func)
+    # Если декоратор вызывается с параметрами: @save_report(filename="...")
+    return decorator_report
+
+
+@save_report  # Можно также использовать @save_report(filename="my_report.json")
+def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> pd.DataFrame:
+    """
+    Фильтрует транзакции по категории за последние 3 месяца от указанной даты,
+    возвращает только «траты».
 
     Параметры:
-        transactions (pd.DataFrame): DataFrame с колонками 'Категория', 'Сумма операции', 'Дата платежа'.
+        transactions (pd.DataFrame): DataFrame с колонками:
+            'Категория', 'Сумма операции', 'Дата платежа'.
         category (str): Категория для фильтрации.
-        date (Any, optional): Дата в формате 'YYYY-MM-DD'. По умолчанию — текущая дата.
+        date (str, optional): Дата в формате 'YYYY-MM-DD'. По умолчанию — текущая дата.
 
     Возвращает:
-        str: JSON-строка с отфильтрованными транзакциями.
-
-    Пример возвращаемого JSON:
-        [{"Категория": "Фастфуд", "Сумма операции": 100, "Дата платежа": "2021-10-01"}]
+        pd.DataFrame: DataFrame с отфильтрованными транзакциями.
     """
-    # Если дата не передана, берем текущую дату
+    # Если дата не передана, берем текущую
     if date is None:
         date = datetime.datetime.now().strftime("%Y-%m-%d")
 
-    # Преобразуем строку в дату с помощью pandas
-    date = pd.to_datetime(date)
+    # Преобразуем строку в дату
+    date_dt: pd.Timestamp = pd.to_datetime(date)
 
-    # Логируем начало выполнения функции
-    logging.info(f"Фильтрация транзакций по категории: {category}, дата: {date}")
+    logging.info(f"Фильтрация транзакций по категории: '{category}', дата: {date_dt}")
 
-    # Фильтруем данные за последние 3 месяца
-    three_months_ago = date - pd.DateOffset(months=3)
+    # Дата три месяца назад
+    three_months_ago: pd.Timestamp = date_dt - pd.DateOffset(months=3)
+    logging.info(f"Диапазон фильтрации: с {three_months_ago.date()} по {date_dt.date()}")
 
-    # Логируем диапазон дат
-    logging.info(f"Диапазон фильтрации: с {three_months_ago} по {date}")
+    # Убеждаемся, что 'Дата платежа' имеет тип datetime
+    transactions["Дата платежа"] = pd.to_datetime(transactions["Дата платежа"], format="%d.%m.%Y", errors="coerce")
 
-    # Преобразуем колонку 'Дата платежа' в тип datetime
-    transactions["Дата платежа"] = pd.to_datetime(transactions["Дата платежа"], format="%d.%m.%Y")
-
-    # Фильтруем данные
-    filtered_data = transactions[
-        # Преобразуем категорию в нижний регистр для сравнения
+    # Фильтруем:
+    # 1. Категория (без учёта регистра)
+    # 2. Дата в интервале [three_months_ago, date_dt]
+    # 3. «Траты» => Сумма операции < 0
+    filtered_data: pd.DataFrame = transactions[
         (transactions["Категория"].str.lower() == category.lower())
-        & (transactions["Дата платежа"] >= three_months_ago)  # Сравниваем с датой три месяца назад
-        & (transactions["Дата платежа"] <= date)  # Сравниваем с конечной датой
+        & (transactions["Дата платежа"] >= three_months_ago)
+        & (transactions["Дата платежа"] <= date_dt)
+        & (transactions["Сумма операции"] < 0)
     ]
 
-    # Логируем количество найденных транзакций
-    logging.info(f"Найдено {len(filtered_data)} транзакций для категории {category}")
+    logging.info(f"Найдено {len(filtered_data)} транзакций для категории '{category}'")
 
-    # Преобразуем 'Дата платежа' в строку с нужным форматом
+    # Преобразуем дату в удобный формат (YYYY-MM-DD) для вывода
     filtered_data["Дата платежа"] = filtered_data["Дата платежа"].dt.strftime("%Y-%m-%d")
 
-    # Теперь преобразуем в JSON
-    result_json = filtered_data[["Категория", "Сумма операции", "Дата платежа"]].to_json(
-        orient="records", force_ascii=False
-    )
-    # Логируем завершение функции
-    logging.info(f"Отчет сгенерирован для категории {category}")
+    logging.info(f"Отчет сгенерирован для категории '{category}'")
 
-    return result_json
+    # Возвращаем именно DataFrame
+    return filtered_data[["Категория", "Сумма операции", "Дата платежа"]]
